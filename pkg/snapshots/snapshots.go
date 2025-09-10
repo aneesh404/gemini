@@ -25,6 +25,7 @@ import (
 
 	"github.com/fairwindsops/gemini/pkg/kube"
 	snapshotgroup "github.com/fairwindsops/gemini/pkg/types/snapshotgroup/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 
 	snapshotsv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -126,11 +127,16 @@ func createSnapshot(sg *snapshotgroup.SnapshotGroup, annotations map[string]stri
 
 	snapshot := snapshotsv1.VolumeSnapshot{
 		ObjectMeta: metav1.ObjectMeta{
-			Namespace:   sg.ObjectMeta.Namespace,
-			Name:        sg.ObjectMeta.Name + "-" + timestamp,
+			Namespace: sg.ObjectMeta.Namespace,
+			// Name:        sg.ObjectMeta.Name + "-" + timestamp,
 			Annotations: annotations,
 		},
 		Spec: sg.Spec.Template.Spec,
+	}
+	if sg.Spec.NamingConvention.AddTimestamp {
+		snapshot.ObjectMeta.Name = sg.ObjectMeta.Name + "-" + timestamp
+	} else {
+		snapshot.ObjectMeta.Name = sg.ObjectMeta.Name
 	}
 	name := getPVCName(sg)
 	klog.V(3).Infof("%s/%s: creating snapshot for PVC %s", sg.ObjectMeta.Namespace, sg.ObjectMeta.Name, name)
@@ -165,6 +171,20 @@ func createSnapshot(sg *snapshotgroup.SnapshotGroup, annotations map[string]stri
 	snapClient := client.SnapshotClient.Namespace(snapshot.ObjectMeta.Namespace)
 	snap, err := snapClient.Create(context.TODO(), &unst, metav1.CreateOptions{})
 	if err != nil {
+		// If snapshot already exists,
+		if apierrors.IsAlreadyExists(err) {
+			klog.V(5).Infof("%s/%s: snapshot already exists", snapshot.ObjectMeta.Namespace, snapshot.ObjectMeta.Name)
+			snap, err = snapClient.Get(context.TODO(), snapshot.ObjectMeta.Name, metav1.GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			snapClient.Delete(context.TODO(), snapshot.ObjectMeta.Name, metav1.DeleteOptions{})
+			snap, err = snapClient.Create(context.TODO(), &unst, metav1.CreateOptions{})
+			if err != nil {
+				return nil, err
+			}
+			return nil, nil
+		}
 		return nil, err
 	}
 	return parseSnapshot(snap)
