@@ -75,6 +75,9 @@ func ReconcileBackupsForSnapshotGroup(sg *snapshotgroup.SnapshotGroup) error {
 
 // RestoreSnapshotGroup restores the PV to a particular snapshot
 func RestoreSnapshotGroup(sg *snapshotgroup.SnapshotGroup, waitForRestoreSeconds int) error {
+	if sg.Spec.NamingConvention.AddTimestamp == false {
+		return fmt.Errorf("%s/%s: naming convention does not add timestamp,hence no point in time recovery is possible", sg.ObjectMeta.Namespace, sg.ObjectMeta.Name)
+	}
 	restorePoint := sg.ObjectMeta.Annotations[RestoreAnnotation]
 	if restorePoint == "" {
 		err := fmt.Errorf("%s/%s: has an empty restore annotation", sg.ObjectMeta.Namespace, sg.ObjectMeta.Name)
@@ -91,10 +94,12 @@ func RestoreSnapshotGroup(sg *snapshotgroup.SnapshotGroup, waitForRestoreSeconds
 		klog.Warningf("%s/%s: failed to create failsafe snapshot before restore - %v", sg.ObjectMeta.Namespace, sg.ObjectMeta.Name, err)
 		klog.Warningf("%s/%s: proceeding with restore anyway", sg.ObjectMeta.Namespace, sg.ObjectMeta.Name)
 	}
-	err = restorePVC(sg)
-	if err != nil {
-		klog.Warningf("%s/%s: failed to restore PVC - %v", sg.ObjectMeta.Namespace, sg.ObjectMeta.Name, err)
-		return err
+	if sg.Spec.NamingConvention.AddTimestamp {
+		err = restorePVC(sg)
+		if err != nil {
+			klog.Warningf("%s/%s: failed to restore PVC - %v", sg.ObjectMeta.Namespace, sg.ObjectMeta.Name, err)
+			return err
+		}
 	}
 	return nil
 }

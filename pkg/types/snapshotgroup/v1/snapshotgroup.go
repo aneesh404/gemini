@@ -20,9 +20,14 @@ type SnapshotGroup struct {
 }
 
 type SnapshotGroupSpec struct {
-	Claim    SnapshotClaim      `json:"persistentVolumeClaim"`
-	Template SnapshotTemplate   `json:"template"`
-	Schedule []SnapshotSchedule `json:"schedule"`
+	Claim            SnapshotClaim            `json:"persistentVolumeClaim"`
+	Template         SnapshotTemplate         `json:"template"`
+	Schedule         []SnapshotSchedule       `json:"schedule"`
+	NamingConvention SnapshotNamingConvention `json:"namingConvention"`
+}
+
+type SnapshotNamingConvention struct {
+	AddTimestamp bool `json:"addTimestamp"`
 }
 
 type SnapshotClaim struct {
