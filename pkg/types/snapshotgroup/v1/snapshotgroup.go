@@ -16,7 +16,7 @@ type SnapshotGroup struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
 	Spec              SnapshotGroupSpec   `json:"spec"`
-	Status            SnapshotGroupStatus `json:"status"`
+	Status            SnapshotGroupStatus `json:"status,omitempty"`
 }
 
 type SnapshotGroupSpec struct {
