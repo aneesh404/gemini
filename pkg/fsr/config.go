@@ -24,6 +24,26 @@ import (
 // spec.fastSnapshotRestore.availabilityZones use this value.
 const DefaultAZsEnvVar = "GEMINI_DEFAULT_FSR_AZS"
 
+// EnabledEnvVar is the cluster-wide FSR opt-in. Default behaviour (unset or
+// any value not listed below) is DISABLED — the controller will not initialize
+// the AWS client and ReconcileFSR short-circuits for every SnapshotGroup.
+// Set to "true", "1", "yes", or "on" (case-insensitive) to enable. When
+// disabled, this is a pure skip: it does not clean up snapshots already
+// FSR-enabled in AWS.
+const EnabledEnvVar = "GEMINI_FSR_ENABLED"
+
+// EnabledFromEnv reports the cluster-wide FSR opt-in state. Returns false
+// unless the env var is explicitly set to a truthy value.
+func EnabledFromEnv() bool {
+	raw := strings.ToLower(strings.TrimSpace(os.Getenv(EnabledEnvVar)))
+	switch raw {
+	case "true", "1", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
 // DefaultAZsFromEnv parses GEMINI_DEFAULT_FSR_AZS into a slice. Accepts a
 // comma-separated list with optional whitespace ("ap-northeast-1a, ap-northeast-1c").
 // Returns nil if the env var is unset or empty.
