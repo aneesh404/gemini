@@ -30,16 +30,20 @@ import (
 )
 
 // fsrTestSetup wires the package-level fsrClient/defaultFSRAZs to a fresh fake
-// per test and returns the fake so the test can poke AWS state directly.
+// per test and returns the fake so the test can poke AWS state directly. The
+// global FSR opt-in is forced on so tests exercising the reconciler don't need
+// to repeat it; the kill-switch test flips it off explicitly.
 func fsrTestSetup(t *testing.T) *fsr.FakeClient {
 	t.Helper()
 	kube.SetFakeClient()
 	fake := fsr.NewFakeClient()
 	SetFSRClient(fake)
 	SetDefaultFSRAZs(nil)
+	SetFSRGlobalEnabled(true)
 	t.Cleanup(func() {
 		SetFSRClient(nil)
 		SetDefaultFSRAZs(nil)
+		SetFSRGlobalEnabled(false)
 	})
 	return fake
 }
@@ -551,11 +555,12 @@ func TestReconcileFSR_EnablingToEnabled_TriggersDisableOfOlderSamePass(t *testin
 }
 
 // Global kill-switch: even with per-SG enabled=true and seeded state, the
-// reconciler does nothing when the global flag is off.
+// reconciler does nothing when the global flag is off. fsrTestSetup defaults
+// the flag to on; this test flips it off (its own cleanup is unnecessary
+// because fsrTestSetup's cleanup resets it to the package default).
 func TestReconcileFSR_GlobalDisabled_NoOp(t *testing.T) {
 	fake := fsrTestSetup(t)
 	SetFSRGlobalEnabled(false)
-	t.Cleanup(func() { SetFSRGlobalEnabled(true) })
 
 	sg := makeSG("foo", "default", true, []string{"az-a"})
 	createSnapshotForTest(t, sg)

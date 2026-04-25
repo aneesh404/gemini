@@ -24,22 +24,23 @@ import (
 // spec.fastSnapshotRestore.availabilityZones use this value.
 const DefaultAZsEnvVar = "GEMINI_DEFAULT_FSR_AZS"
 
-// EnabledEnvVar is the cluster-wide FSR kill-switch. Default behaviour (unset
-// or any value not listed below) is enabled. Set to "false", "0", "no", or
-// "off" (case-insensitive) to disable: the controller will not initialize the
-// AWS client and ReconcileFSR short-circuits for every SnapshotGroup. This is
-// a pure skip — it does not clean up snapshots already FSR-enabled in AWS.
+// EnabledEnvVar is the cluster-wide FSR opt-in. Default behaviour (unset or
+// any value not listed below) is DISABLED — the controller will not initialize
+// the AWS client and ReconcileFSR short-circuits for every SnapshotGroup.
+// Set to "true", "1", "yes", or "on" (case-insensitive) to enable. When
+// disabled, this is a pure skip: it does not clean up snapshots already
+// FSR-enabled in AWS.
 const EnabledEnvVar = "GEMINI_FSR_ENABLED"
 
-// EnabledFromEnv reports the cluster-wide FSR kill-switch state. Returns true
-// unless the env var is explicitly set to a falsy value.
+// EnabledFromEnv reports the cluster-wide FSR opt-in state. Returns false
+// unless the env var is explicitly set to a truthy value.
 func EnabledFromEnv() bool {
 	raw := strings.ToLower(strings.TrimSpace(os.Getenv(EnabledEnvVar)))
 	switch raw {
-	case "false", "0", "no", "off":
-		return false
-	default:
+	case "true", "1", "yes", "on":
 		return true
+	default:
+		return false
 	}
 }
 

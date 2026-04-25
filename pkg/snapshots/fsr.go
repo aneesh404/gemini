@@ -47,7 +47,7 @@ const FSRDisableTimeout = 2 * time.Hour
 var (
 	fsrClient        fsr.Client
 	defaultFSRAZs    []string
-	fsrGlobalEnabled = true
+	fsrGlobalEnabled = false
 )
 
 // SetFSRClient installs the AWS FSR client used by ReconcileFSR. main.go calls
@@ -58,10 +58,12 @@ func SetFSRClient(c fsr.Client) { fsrClient = c }
 // SnapshotGroup omits spec.fastSnapshotRestore.availabilityZones.
 func SetDefaultFSRAZs(azs []string) { defaultFSRAZs = azs }
 
-// SetFSRGlobalEnabled flips the cluster-wide FSR kill-switch. When false,
-// ReconcileFSR short-circuits regardless of per-SnapshotGroup configuration.
-// This is a pure skip — snapshots already FSR-enabled in AWS stay enabled;
-// cleanup happens via per-SG `enabled: false` or manual aws ec2 calls.
+// SetFSRGlobalEnabled flips the cluster-wide FSR opt-in. The default is false
+// — operators must explicitly enable FSR (typically via GEMINI_FSR_ENABLED).
+// When false, ReconcileFSR short-circuits regardless of per-SnapshotGroup
+// configuration. This is a pure skip — snapshots already FSR-enabled in AWS
+// stay enabled; cleanup happens via per-SG `enabled: false` or manual aws ec2
+// calls.
 func SetFSRGlobalEnabled(v bool) { fsrGlobalEnabled = v }
 
 // ReconcileFSR drives the FSR state machine for a single SnapshotGroup.

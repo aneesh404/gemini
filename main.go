@@ -20,13 +20,12 @@ func init() {
 func main() {
 	klog.V(5).Infof("Running in verbose mode")
 
-	// Cluster-wide FSR kill-switch. When disabled we skip AWS client init too,
-	// so operators can turn the feature off on clusters that have no AWS creds
-	// wired to the pod without seeing a spurious warning every restart.
-	if !fsr.EnabledFromEnv() {
-		snapshots.SetFSRGlobalEnabled(false)
-		klog.V(2).Infof("FSR: disabled globally via %s=false; ReconcileFSR will no-op for all SnapshotGroups", fsr.EnabledEnvVar)
-	} else {
+	// Cluster-wide FSR opt-in. Default is disabled; operators must set
+	// GEMINI_FSR_ENABLED=true (or 1/yes/on) to turn it on. When disabled we
+	// also skip AWS client init so clusters without AWS creds don't see a
+	// spurious warning every restart.
+	if fsr.EnabledFromEnv() {
+		snapshots.SetFSRGlobalEnabled(true)
 		// Initialize the AWS Fast Snapshot Restore client. SnapshotGroups that opt
 		// in via spec.fastSnapshotRestore.enabled use this; others ignore it.
 		// We log-and-continue on init failure so a missing AWS environment does
@@ -40,6 +39,8 @@ func main() {
 			snapshots.SetDefaultFSRAZs(azs)
 			klog.V(2).Infof("FSR: default AZs from %s = %v", fsr.DefaultAZsEnvVar, azs)
 		}
+	} else {
+		klog.V(2).Infof("FSR: disabled (set %s=true to enable); ReconcileFSR will no-op for all SnapshotGroups", fsr.EnabledEnvVar)
 	}
 
 	ctrl := controller.NewController()
